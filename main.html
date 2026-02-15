@@ -553,6 +553,35 @@
         </div>
     </div>
 
+    <!-- ===== EMOTION DETECTION MODAL ===== -->
+    <div class="modal" id="emotionModal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <div class="modal-title-icon gradient"><i class="fas fa-brain"></i></div>
+                    <h3>Mood Detection</h3>
+                </div>
+                <button class="modal-close" onclick="closeEmotionModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="cam-container"
+                    style="position: relative; border-radius: 12px; overflow: hidden; background: #000; aspect-ratio: 4/3; margin-bottom: 20px;">
+                    <img id="camFrame" src="" style="width:100%; height:100%; object-fit: cover;">
+                    <div class="cam-scan"
+                        style="position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: var(--grad-main); box-shadow: 0 0 15px var(--green); animation: scanLoop 3s linear infinite;">
+                    </div>
+                </div>
+                <div class="emotion-status"
+                    style="text-align: center; padding: 15px; background: var(--bg-3); border-radius: 12px;">
+                    <div style="font-size: 14px; color: var(--text-dim); margin-bottom: 5px;">CURRENT MOOD</div>
+                    <div id="detectedMood" style="font-size: 24px; font-weight: 800; color: var(--green);">Analyzing...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastStack"></div>
     <script src="app.js"></script>
 </body>
 

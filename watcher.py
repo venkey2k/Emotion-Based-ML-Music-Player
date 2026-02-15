@@ -20,7 +20,7 @@ from mutagen.id3 import ID3, APIC, TIT2, TPE1
 # ──────────────────────────────────────────────
 SONGS_DIR = 'songs'
 IMAGES_DIR = 'images'
-DEBOUNCE_SECONDS = 1.5   # wait for rapid changes to settle
+DEBOUNCE_SECONDS = 2.5   # wait for rapid changes to settle
 
 
 # ──────────────────────────────────────────────
@@ -92,30 +92,31 @@ class SongScanner:
                 try:
                     audio = MP3(file_path, ID3=ID3)
 
-                    if 'TIT2' in audio:
-                        title = str(audio['TIT2'].text[0])
-                    if 'TPE1' in audio:
-                        artist = str(audio['TPE1'].text[0])
+                    if audio.tags:
+                        if 'TIT2' in audio and audio['TIT2'].text:
+                            title = str(audio['TIT2'].text[0])
+                        if 'TPE1' in audio and audio['TPE1'].text:
+                            artist = str(audio['TPE1'].text[0])
 
-                    # Extract embedded cover art
-                    for tag in audio.tags.values():
-                        if isinstance(tag, APIC):
-                            h = hashlib.md5(
-                                file_path.encode('utf-8')
-                            ).hexdigest()
-                            ext = 'png' if 'png' in tag.mime else 'jpg'
-                            cover_fname = f"cover_{h}.{ext}"
-                            cover_fpath = os.path.join(
-                                self.images_dir, cover_fname
-                            )
+                        # Extract embedded cover art
+                        for tag in audio.tags.values():
+                            if isinstance(tag, APIC):
+                                h = hashlib.md5(file_path.encode('utf-8')).hexdigest()
+                                ext = 'png' if 'png' in tag.mime else 'jpg'
+                                cover_fname = f"cover_{h}.{ext}"
+                                cover_fpath = os.path.join(self.images_dir, cover_fname)
 
-                            if not os.path.exists(cover_fpath):
-                                with open(cover_fpath, 'wb') as img_f:
-                                    img_f.write(tag.data)
+                                # Always extract if missing OR if file is suspiciously small (corrupt)
+                                if not os.path.exists(cover_fpath) or os.path.getsize(cover_fpath) < 100:
+                                    with open(cover_fpath, 'wb') as img_f:
+                                        img_f.write(tag.data)
+                                    print(f"  🖼️  Extracted cover: {cover_fname}")
 
-                            cover_path = f"{self.images_dir}/{cover_fname}"
-                            break
-                except Exception:
+                                cover_path = f"{self.images_dir}/{cover_fname}"
+                                break
+                except Exception as e:
+                    # If file is locked/being written, we'll try again on next event
+                    print(f"  ⚠️  Metadata read failed for {filename}: {e}")
                     pass
 
                 result.append({

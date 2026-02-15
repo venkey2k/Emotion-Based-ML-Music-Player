@@ -66,9 +66,9 @@ function updateSongsData(data, silent) {
 
     // ── Fingerprint check: skip if nothing changed ──
     const newFP = data.length + '::' +
-        data.map(s => s.filename).sort().join('|');
+        data.map(s => `${s.filename}|${s.cover}`).sort().join('|');
     const oldFP = songs.length + '::' +
-        songs.map(s => s.filename).sort().join('|');
+        songs.map(s => `${s.filename}|${s.cover}`).sort().join('|');
 
     if (songs.length > 0 && newFP === oldFP) {
         return;  // no change
@@ -450,15 +450,38 @@ function updCount(c) {
 
 
 // ===== EMOTION / RANDOM =====
+eel.expose(updateFrame);
+function updateFrame(data) {
+    const img = document.getElementById('camFrame');
+    if (img) img.src = data;
+}
+
+function openEmotionModal() {
+    document.getElementById('emotionModal').classList.add('open');
+    document.getElementById('detectedMood').textContent = 'Analyzing...';
+    eel.startCamera()();
+}
+
+function closeEmotionModal() {
+    document.getElementById('emotionModal').classList.remove('open');
+    eel.stopCamera()();
+}
+
 async function getTime() {
     try {
-        toast('🧠 Scanning your emotion...', 'info');
+        openEmotionModal();
         let val = await eel.getEmotion()();
+        document.getElementById('detectedMood').textContent = val.toUpperCase();
+
         const map = { angry: 0, happy: 1, sad: 2 };
-        moody(map[val] !== undefined ? map[val] : 3);
-        toast(`Mood detected: ${val} ${emojiFor(val)}`, 'success');
+        setTimeout(() => {
+            closeEmotionModal();
+            moody(map[val] !== undefined ? map[val] : 3);
+            toast(`Mood detected: ${val} ${emojiFor(val)}`, 'success');
+        }, 1500);
     } catch (e) {
         console.error(e);
+        closeEmotionModal();
         toast('Detection failed, shuffling instead', 'warning');
         rand_play();
     }
@@ -483,6 +506,7 @@ function initAudio() {
     a.addEventListener('timeupdate', () => {
         if (!a.duration) return;
         const p = (a.currentTime / a.duration) * 100;
+        // console.log(`[Moodify] Progress: ${p.toFixed(2)}%`);
         document.getElementById('pbFill').style.width = p + '%';
         document.getElementById('timeFill').style.width = p + '%';
         document.getElementById('curTime').textContent = fmt(a.currentTime);
