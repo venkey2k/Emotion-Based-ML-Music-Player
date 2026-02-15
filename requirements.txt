@@ -1,0 +1,9 @@
+eel
+opencv-python
+numpy
+tensorflow
+tf-keras
+mutagen
+mediapipe
+yt-dlp
+watchdog

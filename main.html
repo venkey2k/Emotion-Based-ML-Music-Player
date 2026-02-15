@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 Moodify — Emotion Music Player</title>
+    <script type="text/javascript" src="/eel.js"></script>
+
+    <!-- Moodify Favicon -->
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='64' y2='64' gradientUnits='userSpaceOnUse'%3E%3Cstop offset='0%25' stop-color='%231DB954'/%3E%3Cstop offset='50%25' stop-color='%23667eea'/%3E%3Cstop offset='100%25' stop-color='%23f093fb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='32' cy='32' r='30' fill='url(%23g)'/%3E%3Cpath d='M18 42c8-5 18-5 28 0' stroke='white' stroke-width='3.5' stroke-linecap='round' fill='none'/%3E%3Cpath d='M21 36c6-4 14-4 22 0' stroke='white' stroke-width='3' stroke-linecap='round' fill='none'/%3E%3Cpath d='M25 30c4-3 10-3 14 0' stroke='white' stroke-width='2.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- Animated Color Blobs Background -->
+    <div class="color-blobs">
+        <div class="blob b1"></div>
+        <div class="blob b2"></div>
+        <div class="blob b3"></div>
+        <div class="blob b4"></div>
+        <div class="blob b5"></div>
+    </div>
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-logo">
+                <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="logoGrad" x1="0" y1="0" x2="40" y2="40">
+                            <stop offset="0%" stop-color="#1DB954" />
+                            <stop offset="50%" stop-color="#667eea" />
+                            <stop offset="100%" stop-color="#f093fb" />
+                        </linearGradient>
+                    </defs>
+                    <circle cx="20" cy="20" r="20" fill="url(#logoGrad)" />
+                    <path d="M11 27c6-3.5 12-3.5 18 0" stroke="#fff" stroke-width="2.2" stroke-linecap="round" />
+                    <path d="M13.5 23c4.5-3 9.5-3 13 0" stroke="#fff" stroke-width="2" stroke-linecap="round" />
+                    <path d="M16 19c3-2 5.5-2 8 0" stroke="#fff" stroke-width="1.8" stroke-linecap="round" />
+                </svg>
+            </div>
+            <div class="brand-text">
+                <span class="brand-name">Moodify</span>
+                <span class="brand-tag">✨ Music for your soul</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <div class="nav-group">
+                <a class="nav-link active" onclick="showView('home',this)" data-color="green">
+                    <div class="nav-icon-wrap green"><i class="fas fa-home"></i></div>
+                    <span>Home</span>
+                </a>
+                <a class="nav-link" onclick="showView('browse',this)" data-color="purple">
+                    <div class="nav-icon-wrap purple"><i class="fas fa-compass"></i></div>
+                    <span>Explore</span>
+                </a>
+                <a class="nav-link" onclick="toggleQueue()" data-color="orange">
+                    <div class="nav-icon-wrap orange"><i class="fas fa-layer-group"></i></div>
+                    <span>Queue</span>
+                    <div class="nav-counter" id="sidebarCounter">0</div>
+                </a>
+                <a class="nav-link" onclick="openYouTubeModal()" data-color="red">
+                    <div class="nav-icon-wrap red"><i class="fab fa-youtube"></i></div>
+                    <span>Download MP3</span>
+                </a>
+                <a class="nav-link" onclick="filterByMood('favorites')" data-color="pink">
+                    <div class="nav-icon-wrap pink"><i class="fas fa-heart"></i></div>
+                    <span>Favorites</span>
+                </a>
+                <a class="nav-link" onclick="loadSongs()" data-color="cyan">
+                    <div class="nav-icon-wrap cyan"><i class="fas fa-sync-alt"></i></div>
+                    <span>Refresh Library</span>
+                </a>
+            </div>
+
+            <div class="nav-sep"></div>
+
+            <div class="nav-group">
+                <div class="nav-label">🎨 MOOD PLAYLISTS</div>
+                <a class="nav-link" onclick="filterByMood('happy')">
+                    <div class="nav-icon-wrap yellow"><span class="nav-emoji">😊</span></div>
+                    <span>Happy Vibes</span>
+                    <div class="mood-dot yellow"></div>
+                </a>
+                <a class="nav-link" onclick="filterByMood('sad')">
+                    <div class="nav-icon-wrap blue"><span class="nav-emoji">😢</span></div>
+                    <span>Sad Songs</span>
+                    <div class="mood-dot blue"></div>
+                </a>
+                <a class="nav-link" onclick="filterByMood('angry')">
+                    <div class="nav-icon-wrap red"><span class="nav-emoji">🔥</span></div>
+                    <span>Intense & Angry</span>
+                    <div class="mood-dot red"></div>
+                </a>
+                <a class="nav-link" onclick="filterByMood('neutral')">
+                    <div class="nav-icon-wrap mint"><span class="nav-emoji">🍃</span></div>
+                    <span>Chill & Relaxed</span>
+                    <div class="mood-dot mint"></div>
+                </a>
+                <a class="nav-link" onclick="filterByMood('surprise')">
+                    <div class="nav-icon-wrap electric"><span class="nav-emoji">⚡</span></div>
+                    <span>Energetic</span>
+                    <div class="mood-dot electric"></div>
+                </a>
+            </div>
+
+            <div class="nav-sep"></div>
+
+            <div class="nav-group">
+                <div class="nav-label">🎮 PLAY MODES</div>
+                <a class="nav-link mode-on" id="modeQ" onclick="setMode(1)">
+                    <div class="nav-icon-wrap cyan"><i class="fas fa-list-ol"></i></div>
+                    <span>Queue Mode</span>
+                </a>
+                <a class="nav-link" id="modeE" onclick="setMode(2)">
+                    <div class="nav-icon-wrap gradient"><i class="fas fa-brain"></i></div>
+                    <span>Emotion AI</span>
+                    <span class="ai-badge">AI</span>
+                </a>
+                <a class="nav-link" id="modeR" onclick="setMode(3)">
+                    <div class="nav-icon-wrap rainbow"><i class="fas fa-shuffle"></i></div>
+                    <span>Shuffle</span>
+                </a>
+            </div>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button class="upload-trigger" onclick="openUploadModal()">
+                <div class="upload-icon"><i class="fas fa-plus"></i></div>
+                <span>Upload Song</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- ===== MAIN ===== -->
+    <main class="main-area" id="mainArea">
+
+        <!-- Top Bar -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="tb-circle" onclick="document.getElementById('sidebar').classList.toggle('mobile-open')">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <button class="tb-circle" onclick="history.back()"><i class="fas fa-chevron-left"></i></button>
+                <button class="tb-circle" onclick="history.forward()"><i class="fas fa-chevron-right"></i></button>
+            </div>
+
+            <div class="topbar-center">
+                <div class="search-wrapper">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="searchInput" placeholder="Search songs, artists, moods..."
+                        oninput="filterSongs(this.value)">
+                    <div class="search-shortcut">⌘K</div>
+                </div>
+            </div>
+
+            <div class="topbar-right">
+                <button class="tb-action green-glow" onclick="getTime()" title="Detect Emotion">
+                    <i class="fas fa-face-smile-wink"></i>
+                </button>
+                <button class="tb-action" onclick="openUploadModal()" title="Upload">
+                    <i class="fas fa-cloud-arrow-up"></i>
+                </button>
+                <button class="tb-action" onclick="toggleQueue()" title="Queue" id="queueToggle">
+                    <i class="fas fa-bars-staggered"></i>
+                    <span class="tb-badge" id="topBadge">0</span>
+                </button>
+                <div class="user-pill">
+                    <div class="user-avatar-ring">
+                        <div class="user-avatar"><i class="fas fa-user"></i></div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- ===== HERO ===== -->
+        <section class="hero" id="heroSection">
+            <div class="hero-inner">
+                <div class="hero-left">
+                    <div class="hero-pill">
+                        <i class="fas fa-wand-magic-sparkles"></i>
+                        AI-POWERED MUSIC
+                    </div>
+                    <h1 class="hero-title">
+                        Feel the Music<br>
+                        <span class="hero-gradient">Match Your Mood</span>
+                    </h1>
+                    <p class="hero-subtitle">
+                        Our AI reads your emotions in real-time and curates the perfect playlist.
+                        Just press play and let <b>Moodify</b> do the magic ✨
+                    </p>
+                    <div class="hero-buttons">
+                        <button class="hero-btn glow-btn" onclick="setMode(2)">
+                            <i class="fas fa-brain"></i>
+                            Detect My Mood
+                            <div class="btn-glow"></div>
+                        </button>
+                        <button class="hero-btn outline-btn" onclick="rand_play()">
+                            <i class="fas fa-play"></i>
+                            Shuffle Play
+                        </button>
+                    </div>
+                    <div class="hero-stats">
+                        <div class="stat">
+                            <div class="stat-num" id="statSongs">0</div>
+                            <div class="stat-label">Songs</div>
+                        </div>
+                        <div class="stat-divider"></div>
+                        <div class="stat">
+                            <div class="stat-num">5</div>
+                            <div class="stat-label">Moods</div>
+                        </div>
+                        <div class="stat-divider"></div>
+                        <div class="stat">
+                            <div class="stat-num">AI</div>
+                            <div class="stat-label">Powered</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="hero-right">
+                    <div class="hero-visual">
+                        <div class="floating-cards">
+                            <div class="float-card fc1">
+                                <span>😊</span>
+                                <div class="fc-label">Happy</div>
+                            </div>
+                            <div class="float-card fc2">
+                                <span>😢</span>
+                                <div class="fc-label">Sad</div>
+                            </div>
+                            <div class="float-card fc3">
+                                <span>🔥</span>
+                                <div class="fc-label">Angry</div>
+                            </div>
+                            <div class="float-card fc4">
+                                <span>😌</span>
+                                <div class="fc-label">Chill</div>
+                            </div>
+                            <div class="float-card fc5">
+                                <span>⚡</span>
+                                <div class="fc-label">Energy</div>
+                            </div>
+                        </div>
+                        <div class="hero-rings">
+                            <div class="ring r1"></div>
+                            <div class="ring r2"></div>
+                            <div class="ring r3"></div>
+                        </div>
+                        <div class="hero-center-icon">
+                            <svg viewBox="0 0 80 80" fill="none">
+                                <defs>
+                                    <linearGradient id="hg" x1="0" y1="0" x2="80" y2="80">
+                                        <stop offset="0%" stop-color="#1DB954" />
+                                        <stop offset="50%" stop-color="#667eea" />
+                                        <stop offset="100%" stop-color="#f093fb" />
+                                    </linearGradient>
+                                </defs>
+                                <circle cx="40" cy="40" r="38" fill="url(#hg)" />
+                                <path d="M22 52c10-6 24-6 36 0" stroke="#fff" stroke-width="3.5"
+                                    stroke-linecap="round" />
+                                <path d="M26 44c8-5 18-5 28 0" stroke="#fff" stroke-width="3" stroke-linecap="round" />
+                                <path d="M30 36c5-3 12-3 20 0" stroke="#fff" stroke-width="2.5"
+                                    stroke-linecap="round" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Mood Chips -->
+        <section class="chips-bar" id="chipsBar">
+            <div class="chips-scroll">
+                <button class="chip active" onclick="chipFilter(this,'all')">
+                    <span>🎵</span> All Songs
+                </button>
+                <button class="chip happy" onclick="chipFilter(this,'happy')">
+                    <span>😊</span> Happy
+                </button>
+                <button class="chip sad" onclick="chipFilter(this,'sad')">
+                    <span>😢</span> Sad
+                </button>
+                <button class="chip angry" onclick="chipFilter(this,'angry')">
+                    <span>🔥</span> Angry
+                </button>
+                <button class="chip chill" onclick="chipFilter(this,'neutral')">
+                    <span>🍃</span> Chill
+                </button>
+                <button class="chip energy" onclick="chipFilter(this,'surprise')">
+                    <span>⚡</span> Energetic
+                </button>
+            </div>
+        </section>
+
+        <!-- Songs Section -->
+        <section class="songs-section">
+            <div class="section-head">
+                <div>
+                    <h2 class="section-title">Your Library</h2>
+                    <p class="section-sub" id="songCount">Loading songs...</p>
+                </div>
+                <div class="view-toggles">
+                    <button class="vt active" onclick="setView('grid', this)" title="Grid View"><i
+                            class="fas fa-th-large"></i></button>
+                    <button class="vt" onclick="setView('list',this)" title="List"><i class="fas fa-list"></i></button>
+                </div>
+            </div>
+            <div class="songs-grid" id="songsGrid"></div>
+            <div class="songs-list" id="songsList" style="display:none;"></div>
+            <div class="empty-box" id="emptyBox" style="display:none;">
+                <div class="empty-emoji">🎵</div>
+                <h3>No songs found</h3>
+                <p>Try a different search or mood filter</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- ===== QUEUE DRAWER ===== -->
+    <div class="queue-dim" id="queueDim" onclick="toggleQueue()"></div>
+    <aside class="queue-drawer" id="queueDrawer">
+        <div class="qd-head">
+            <div class="qd-title">
+                <i class="fas fa-layer-group"></i> Queue
+            </div>
+            <button class="qd-close" onclick="toggleQueue()"><i class="fas fa-xmark"></i></button>
+        </div>
+
+        <div class="qd-now" id="qdNow" style="display:none;">
+            <div class="qd-section-title">🎧 Now Playing</div>
+            <div class="qd-now-card" id="qdNowCard"></div>
+        </div>
+
+        <div class="qd-section-title" id="qdNextTitle" style="display:none;">⏭️ Next Up</div>
+        <div class="qd-list" id="qdList">
+            <div class="qd-empty" id="qdEmpty">
+                <div class="qd-empty-emoji">📭</div>
+                <h4>Queue is empty</h4>
+                <p>Click <b>+</b> on any song to add</p>
+            </div>
+        </div>
+
+        <div class="qd-bottom">
+            <button class="qd-play-next" onclick="nextsong()">
+                <i class="fas fa-forward-step"></i> Play Next in Queue
+            </button>
+        </div>
+    </aside>
+
+    <!-- ===== BOTTOM PLAYER ===== -->
+    <footer class="player-bar" id="playerBar">
+        <!-- Top Progress -->
+        <div class="pb-progress" id="pbProgress" onclick="seek(event)">
+            <div class="pb-progress-fill" id="pbFill">
+                <div class="pb-progress-glow"></div>
+                <div class="pb-progress-dot"></div>
+            </div>
+        </div>
+
+        <div class="pb-inner">
+            <!-- Left: Song info -->
+            <div class="pb-left">
+                <div class="pb-cover" id="pbCover">
+                    <img id="pbCoverImg"
+                        src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Crect fill='%23f0f0f0' width='80' height='80' rx='8'/%3E%3Ctext fill='%23ccc' x='50%25' y='50%25' text-anchor='middle' dy='.35em' font-size='28'%3E♪%3C/text%3E%3C/svg%3E"
+                        alt="">
+                    <div class="pb-playing-indicator" id="pbPlayingInd">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+                <div class="pb-meta">
+                    <div class="pb-title" id="pbTitle">No song selected</div>
+                    <div class="pb-artist" id="pbArtist">Pick a track to start</div>
+                </div>
+                <button class="pb-like" id="pbLike" onclick="toggleLike()">
+                    <i class="far fa-heart"></i>
+                </button>
+            </div>
+
+            <!-- Center: Controls -->
+            <div class="pb-center">
+                <div class="pb-controls">
+                    <button class="pc" onclick="rand_play()" title="Shuffle"><i class="fas fa-shuffle"></i></button>
+                    <button class="pc" onclick="prevSong()" title="Previous"><i
+                            class="fas fa-backward-step"></i></button>
+                    <button class="pc main-play" id="mainPlayBtn" onclick="togglePlay()" title="Play">
+                        <i class="fas fa-play" id="mainPlayIcon"></i>
+                    </button>
+                    <button class="pc" onclick="nextsong()" title="Next"><i class="fas fa-forward-step"></i></button>
+                    <button class="pc" title="Repeat"><i class="fas fa-repeat"></i></button>
+                </div>
+                <div class="pb-time">
+                    <span id="curTime">0:00</span>
+                    <div class="pb-time-bar" id="timeBar" onclick="seek(event)">
+                        <div class="pb-time-fill" id="timeFill"></div>
+                    </div>
+                    <span id="totTime">0:00</span>
+                </div>
+            </div>
+
+            <!-- Right: Extras -->
+            <div class="pb-right">
+                <button class="pe" onclick="getTime()" title="Detect Emotion">
+                    <i class="fas fa-face-smile-beam"></i>
+                </button>
+                <button class="pe" onclick="toggleQueue()" title="Queue">
+                    <i class="fas fa-bars-staggered"></i>
+                </button>
+                <div class="vol-wrap">
+                    <button class="pe" onclick="toggleMute()" title="Volume">
+                        <i class="fas fa-volume-high" id="volIcon"></i>
+                    </button>
+                    <input type="range" class="vol-range" id="volRange" min="0" max="100" value="80"
+                        oninput="setVolume(this.value)">
+                </div>
+            </div>
+        </div>
+
+        <audio id="main_slider">
+            <source id="sel" type="audio/mpeg">
+        </audio>
+    </footer>
+
+    <!-- ===== UPLOAD MODAL ===== -->
+    <div class="modal-dim" id="uploadModal">
+        <div class="modal-box">
+            <div class="modal-head">
+                <div class="modal-title">
+                    <div class="modal-title-icon"><i class="fas fa-cloud-arrow-up"></i></div>
+                    Upload New Song
+                </div>
+                <button class="modal-close" onclick="closeUploadModal()"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="drop-zone" id="dropZone" onclick="document.getElementById('uploadFile').click()">
+                    <input type="file" id="uploadFile" accept=".mp3" hidden onchange="onFileChosen(this)">
+                    <div class="dz-icon"><i class="fas fa-cloud-arrow-up"></i></div>
+                    <h3>Drop your MP3 here</h3>
+                    <p>or click to browse</p>
+                    <div class="dz-filename" id="dzFilename"></div>
+                </div>
+
+                <div style="text-align:center; margin: 10px 0; position:relative;">
+                    <span
+                        style="background:var(--bg-2); padding:0 8px; color:var(--text-3); font-size:11px; font-weight:700;">OR</span>
+                    <div
+                        style="position:absolute; top:50%; left:0; right:0; height:1px; background:var(--border); z-index:-1;">
+                    </div>
+                </div>
+
+                <button class="upload-trigger" onclick="switchToYouTube()"
+                    style="justify-content:center; margin-bottom:16px;">
+                    <i class="fab fa-youtube" style="color:#ef4444; font-size:16px;"></i>
+                    <span>Download from YouTube</span>
+                </button>
+                <div class="mf">
+                    <label>🎵 Song Title</label>
+                    <input type="text" id="uploadTitle" placeholder="What's it called?">
+                </div>
+                <div class="mf">
+                    <label>🎤 Artist / Description</label>
+                    <input type="text" id="uploadDesc" placeholder="Who made it?">
+                </div>
+                <div class="mf">
+                    <label>🎨 Mood</label>
+                    <select id="uploadMood">
+                        <option value="happy">😊 Happy</option>
+                        <option value="sad">😢 Sad</option>
+                        <option value="angry">🔥 Angry</option>
+                        <option value="neutral">🍃 Relaxed</option>
+                        <option value="surprise">⚡ Energetic</option>
+                    </select>
+                </div>
+                <div class="upload-loading" id="uploadLoading" style="display:none;">
+                    <div class="upload-loading-bar">
+                        <div class="upload-loading-fill"></div>
+                    </div>
+                    <span>Uploading...</span>
+                </div>
+            </div>
+            <div class="modal-foot">
+                <button class="mfbtn ghost" onclick="closeUploadModal()">Cancel</button>
+                <button class="mfbtn solid" onclick="handleUpload()"><i class="fas fa-upload"></i> Upload</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toasts -->
+    <div class="toast-stack" id="toastStack"></div>
+
+    <!-- ===== YOUTUBE MODAL ===== -->
+    <div class="modal-dim" id="ytModal">
+        <div class="modal-box">
+            <div class="modal-head">
+                <div class="modal-title">
+                    <div class="modal-title-icon red"><i class="fab fa-youtube"></i></div>
+                    Download from YouTube
+                </div>
+                <button class="modal-close" onclick="closeYouTubeModal()"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <!-- Step 1: Input -->
+                <div class="yt-step" id="ytStep1">
+                    <div class="mf">
+                        <label>🔗 YouTube Link</label>
+                        <div class="input-group">
+                            <input type="text" id="ytUrl" placeholder="Paste link here..." oninput="resetYtStep()">
+                            <button class="btn-check" onclick="checkYouTubeUrl()"><i class="fas fa-search"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Preview -->
+                <div class="yt-preview" id="ytPreview" style="display:none;">
+                    <img id="ytThumb" src="" alt="Thumbnail">
+                    <div class="yt-info">
+                        <div class="yt-title" id="ytTitle">Song Title</div>
+                        <div class="yt-author" id="ytAuthor">Artist Name</div>
+                    </div>
+                </div>
+
+                <!-- Mood Selection -->
+                <div class="mf" id="ytMoodSection" style="display:none;">
+                    <label>🎨 Mood</label>
+                    <select id="ytMood">
+                        <option value="happy">😊 Happy</option>
+                        <option value="sad">😢 Sad</option>
+                        <option value="angry">🔥 Angry</option>
+                        <option value="neutral">🍃 Relaxed</option>
+                        <option value="surprise">⚡ Energetic</option>
+                    </select>
+                </div>
+
+                <!-- Actions -->
+                <button class="modal-submit red" id="ytDownloadBtn" onclick="submitYouTube()" style="display:none;">
+                    Download & Convert
+                </button>
+            </div>
+
+            <!-- Loading State -->
+            <div class="modal-loading" id="ytLoading" style="display:none;">
+                <div class="spinner"></div>
+                <div class="loading-text" id="ytLoadingText">Processing...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
