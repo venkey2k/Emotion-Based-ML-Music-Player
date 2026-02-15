@@ -39,6 +39,7 @@ import numpy as np
 import os
 import math
 import logging
+import threading
 from collections import deque, Counter
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Tuple, List
@@ -459,6 +460,7 @@ class EmotionDetector:
 
         self._smoother = _Smoother(self.cfg)
         self._geo = _GeoAnalyzer(self.cfg) if MEDIAPIPE_OK else None
+        self._lock = threading.Lock()
 
         self._no_face = 0
         self._last_result = None
@@ -521,16 +523,31 @@ class EmotionDetector:
         # Geometric features
         geo = None
         if self._face_mesh and self._geo:
-            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            mp_out = self._face_mesh.process(rgb)
-            if mp_out.multi_face_landmarks:
-                fl = mp_out.multi_face_landmarks[0]
-                lm_px = np.array([(lm.x * w, lm.y * h) for lm in fl.landmark])
-                result['lm_px'] = lm_px
-                geo = self._geo.extract(lm_px, fl)
-                result['geo'] = geo
-                if geo.is_valid:
-                    self._geo.try_auto_calibrate(geo, float(ensemble[IDX_NEUTRAL]))
+            with self._lock:
+                try:
+                    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    mp_out = self._face_mesh.process(rgb)
+                    if mp_out.multi_face_landmarks:
+                        fl = mp_out.multi_face_landmarks[0]
+                        lm_px = np.array([(lm.x * w, lm.y * h) for lm in fl.landmark])
+                        result['lm_px'] = lm_px
+                        geo = self._geo.extract(lm_px, fl)
+                        result['geo'] = geo
+                        if geo.is_valid:
+                            self._geo.try_auto_calibrate(geo, float(ensemble[IDX_NEUTRAL]))
+                except Exception as e:
+                    log.error(f"MediaPipe process error: {e}")
+                    # Re-init face mesh if it gets into an invalid state
+                    try:
+                        self._face_mesh.close()
+                    except:
+                        pass
+                    self._face_mesh = mp_lib.solutions.face_mesh.FaceMesh(
+                        static_image_mode=False, max_num_faces=1,
+                        refine_landmarks=True,
+                        min_detection_confidence=0.5,
+                        min_tracking_confidence=0.5)
+                    log.info("MediaPipe FaceMesh re-initialized after crash")
 
         # Apply fixes
         calibrated = self._apply_class_boost(ensemble)
@@ -581,8 +598,9 @@ class EmotionDetector:
         if not self._face_mesh or not self._geo:
             return False
         h, w = frame.shape[:2]
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        mp_out = self._face_mesh.process(rgb)
+        with self._lock:
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            mp_out = self._face_mesh.process(rgb)
         if not mp_out.multi_face_landmarks:
             return False
         fl = mp_out.multi_face_landmarks[0]
