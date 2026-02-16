@@ -164,6 +164,10 @@
             </div>
 
             <div class="topbar-right">
+                <div class="mood-pill" id="moodPill" style="display:none;">
+                    <span class="mp-dot" id="moodDot"></span>
+                    <span class="mp-label" id="lastMoodLabel">MOOD: --</span>
+                </div>
                 <button class="tb-action green-glow" onclick="getTime()" title="Detect Emotion">
                     <i class="fas fa-face-smile-wink"></i>
                 </button>
@@ -512,7 +516,7 @@
                     <div class="mf">
                         <label>🔗 YouTube Link</label>
                         <div class="input-group">
-                            <input type="text" id="ytUrl" placeholder="Paste link here..." oninput="resetYtStep()">
+                            <input type="text" id="ytUrl" placeholder="Paste link here..." oninput="resetYtUI()">
                             <button class="btn-check" onclick="checkYouTubeUrl()"><i class="fas fa-search"></i></button>
                         </div>
                     </div>
@@ -549,13 +553,24 @@
             <div class="modal-loading" id="ytLoading" style="display:none;">
                 <div class="spinner"></div>
                 <div class="loading-text" id="ytLoadingText">Processing...</div>
+
+                <!-- Progress Bar -->
+                <div class="progress-wrapper">
+                    <div class="progress-info">
+                        <span id="ytProgressText">0%</span>
+                        <span id="ytSpeed">waiting...</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill" id="ytProgressBar"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- ===== EMOTION DETECTION MODAL ===== -->
-    <div class="modal" id="emotionModal">
-        <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-dim" id="emotionModal">
+        <div class="modal-box" style="max-width: 500px;">
             <div class="modal-header">
                 <div class="modal-title">
                     <div class="modal-title-icon gradient"><i class="fas fa-brain"></i></div>
@@ -565,8 +580,8 @@
             </div>
             <div class="modal-body">
                 <div class="cam-container"
-                    style="position: relative; border-radius: 12px; overflow: hidden; background: #000; aspect-ratio: 4/3; margin-bottom: 20px;">
-                    <img id="camFrame" src="" style="width:100%; height:100%; object-fit: cover;">
+                    style="position: relative; border-radius: 12px; overflow: hidden; background: transparent; aspect-ratio: 4/3; margin-bottom: 20px;">
+                    <img id="camFrame" src="" style="width:100%; height:100%; object-fit: contain;">
                     <div class="cam-scan"
                         style="position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: var(--grad-main); box-shadow: 0 0 15px var(--green); animation: scanLoop 3s linear infinite;">
                     </div>

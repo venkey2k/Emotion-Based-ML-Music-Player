@@ -16,6 +16,9 @@ let isPlaying = false;
 let favorites = new Set();
 let viewMode = 'grid';
 
+let _lastDetectedMood = null;
+let _lastDetectedConfidence = 0;
+
 // ── Sync state ──
 let _syncLock = false;
 
@@ -156,6 +159,22 @@ function emojiFor(m) {
     return { happy: '😊', sad: '😢', angry: '🔥', neutral: '🍃', surprise: '⚡' }[m] || '🎵';
 }
 
+function setLastDetectedMood(mood, confidence = 0) {
+    _lastDetectedMood = mood;
+    _lastDetectedConfidence = confidence;
+
+    const pill = document.getElementById('moodPill');
+    const label = document.getElementById('lastMoodLabel');
+    if (!pill || !label) return;
+
+    pill.style.display = '';
+    pill.classList.remove('happy', 'sad', 'angry', 'neutral', 'surprise');
+    if (mood) pill.classList.add(mood);
+
+    const pct = Math.round(Math.max(0, Math.min(1, Number(confidence || 0))) * 100);
+    label.textContent = `MOOD: ${(mood || '--').toUpperCase()}${mood ? ` (${pct}%)` : ''}`;
+}
+
 function plain(html) {
     const d = document.createElement('div');
     d.innerHTML = html;
@@ -178,7 +197,7 @@ function renderGrid() {
         c.innerHTML = `
             <div class="sc-cover">
                 <img src="${s.cover}" alt="${s.title}" loading="lazy"
-                    onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22%3E%3Crect fill=%22%23f0f0f0%22 width=%22200%22 height=%22200%22 rx=%2216%22/%3E%3Ctext fill=%22%23ccc%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.35em%22 font-size=%2248%22%3E♪%3C/text%3E%3C/svg%3E'">
+                    onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22%3E%3Crect fill=%22%23f0f0f0%22 width=%22200%22 height=%22200%22 rx=%2216%22/%3E%3Ctext fill=%22%23ccc%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.35em%22 font-size=%2248%22%3E%3C/text%3E%3C/svg%3E'">
                 <div class="sc-mood-stripe ${m}"></div>
                 <span class="sc-mood-tag">${emojiFor(m)} ${m}</span>
                 <button class="sc-add-btn" onclick="event.stopPropagation();addq(${i})" title="Add to queue"><i class="fas fa-plus"></i></button>
@@ -448,37 +467,70 @@ function updCount(c) {
     document.getElementById('songCount').textContent = `${n} song${n !== 1 ? 's' : ''}`;
 }
 
-
 // ===== EMOTION / RANDOM =====
+let _lastFrameAt = 0;
+let _frameThrottleMs = 80;
 eel.expose(updateFrame);
 function updateFrame(data) {
+    const now = performance.now();
+    if (now - _lastFrameAt < _frameThrottleMs) return;
+    _lastFrameAt = now;
     const img = document.getElementById('camFrame');
     if (img) img.src = data;
+}
+
+let _emotionPollTimer = null;
+async function _startEmotionStatusPoll() {
+    if (_emotionPollTimer) return;
+    const moodEl = document.getElementById('detectedMood');
+    _emotionPollTimer = setInterval(async () => {
+        try {
+            const s = await eel.getCameraStatus()();
+            if (!s) return;
+            const emo = (s.emotion || 'neutral');
+            const conf = Math.max(0, Math.min(1, Number(s.confidence || 0)));
+            if (moodEl) moodEl.textContent = `${emo.toUpperCase()} ${Math.round(conf * 100)}%`;
+            setLastDetectedMood(emo, conf);
+        } catch (e) {
+            // ignore
+        }
+    }, 250);
+}
+
+function _stopEmotionStatusPoll() {
+    if (_emotionPollTimer) {
+        clearInterval(_emotionPollTimer);
+        _emotionPollTimer = null;
+    }
 }
 
 function openEmotionModal() {
     document.getElementById('emotionModal').classList.add('open');
     document.getElementById('detectedMood').textContent = 'Analyzing...';
     eel.startCamera()();
+    _startEmotionStatusPoll();
 }
 
 function closeEmotionModal() {
     document.getElementById('emotionModal').classList.remove('open');
+    _stopEmotionStatusPoll();
     eel.stopCamera()();
 }
 
 async function getTime() {
     try {
         openEmotionModal();
-        let val = await eel.getEmotion()();
-        document.getElementById('detectedMood').textContent = val.toUpperCase();
-
+        await new Promise(r => setTimeout(r, 1200));
+        const s = await eel.getCameraStatus()();
+        const val = (s && s.emotion) ? s.emotion : 'neutral';
+        const conf = (s && s.confidence) ? s.confidence : 0;
+        setLastDetectedMood(val, conf);
         const map = { angry: 0, happy: 1, sad: 2 };
         setTimeout(() => {
             closeEmotionModal();
             moody(map[val] !== undefined ? map[val] : 3);
             toast(`Mood detected: ${val} ${emojiFor(val)}`, 'success');
-        }, 1500);
+        }, 3800);
     } catch (e) {
         console.error(e);
         closeEmotionModal();
@@ -644,16 +696,71 @@ function closeYouTubeModal() {
 }
 
 function resetYtStep() {
+    // Full reset (including input)
+    resetYtUI();
+
+    // Clear input
+    const urlInput = document.getElementById('ytUrl');
+    if (urlInput) {
+        urlInput.value = '';
+        urlInput.style.borderColor = '';
+    }
+}
+
+function resetYtUI() {
+    // Partial reset (keeps input value) - useful for oninput
+    // Ensure the main body is visible and loading is hidden
+    document.querySelector('#ytModal .modal-body').style.display = 'block';
+
+    // Reset specific loading UI elements if they exist
+    const loadingEl = document.getElementById('ytLoading');
+    if (loadingEl) loadingEl.style.display = 'none';
+
+    const pBar = document.getElementById('ytProgressBar');
+    if (pBar) pBar.style.width = '0%';
+
+    const pText = document.getElementById('ytProgressText');
+    if (pText) pText.textContent = '0%';
+
+    const pSpeed = document.getElementById('ytSpeed');
+    if (pSpeed) pSpeed.textContent = '';
+
     document.getElementById('ytStep1').style.display = 'block';
     document.getElementById('ytPreview').style.display = 'none';
     document.getElementById('ytMoodSection').style.display = 'none';
     document.getElementById('ytDownloadBtn').style.display = 'none';
-    document.getElementById('ytUrl').style.borderColor = '';
 
     // Clear preview
-    document.getElementById('ytThumb').src = '';
-    document.getElementById('ytTitle').textContent = '';
-    document.getElementById('ytAuthor').textContent = '';
+    const thumb = document.getElementById('ytThumb');
+    if (thumb) thumb.src = '';
+
+    const title = document.getElementById('ytTitle');
+    if (title) title.textContent = '';
+
+    const author = document.getElementById('ytAuthor');
+    if (author) author.textContent = '';
+}
+
+eel.expose(updateDownloadProgress);
+function updateDownloadProgress(data) {
+    // data = { percent: 12.5, speed: "2.5MiB/s", eta: "00:30", status: "downloading" }
+    const loadingEl = document.getElementById('ytLoading');
+    if (loadingEl && loadingEl.style.display !== 'none') {
+        const pBar = document.getElementById('ytProgressBar');
+        if (pBar) pBar.style.width = data.percent + '%';
+
+        const pText = document.getElementById('ytProgressText');
+        if (pText) pText.textContent = Math.round(data.percent) + '%';
+
+        const pSpeed = document.getElementById('ytSpeed');
+        if (pSpeed) {
+            if (data.status === 'finished') {
+                pSpeed.textContent = 'Converting...';
+            } else {
+                pSpeed.textContent = `${data.speed} • ETA: ${data.eta}`;
+            }
+        }
+    }
 }
 
 async function checkYouTubeUrl() {
@@ -773,3 +880,16 @@ function toast(msg, type = 'info') {
     c.appendChild(t);
     setTimeout(() => t.remove(), 4000);
 }
+
+// ===== SYSTEM =====
+eel.expose(close_app);
+function close_app() {
+    window.close();
+}
+
+// Notify backend when window closes
+window.onbeforeunload = function () {
+    // This is optional as Eel usually handles this, but good for safety
+    // We can't really call eel functions reliably here as the window is closing
+    // but in some setups it helps. 
+};

@@ -377,6 +377,16 @@ def stopCamera():
 
 
 @eel.expose
+def getCameraStatus():
+    return {
+        'emotion': cam_mgr._current_emotion,
+        'confidence': cam_mgr._current_confidence,
+        'all_scores': cam_mgr._current_all_scores,
+        'fps': cam_mgr._fps,
+    }
+
+
+@eel.expose
 def getAvailableEmotions():
     return CLASS_LABELS
 
@@ -498,10 +508,19 @@ def download_youtube_song(url, mood):
         target_dir = os.path.join(scanner.songs_dir, mood)
         os.makedirs(target_dir, exist_ok=True)
         
-        # 2. Initialize Downloader
-        downloader = YouTubeMP3Downloader(output_dir=target_dir)
+        # 2. Callback for progress
+        def on_progress(data):
+            # data = {'percent': float, 'speed': str, 'eta': str, 'status': str}
+            try:
+                eel.updateDownloadProgress(data)()
+                eel.sleep(0.01) # Yield to allow message sending
+            except:
+                pass
+
+        # 3. Initialize Downloader with callback
+        downloader = YouTubeMP3Downloader(output_dir=target_dir, progress_callback=on_progress)
         
-        # 3. Process
+        # 4. Process
         result = downloader.process(url)
         
         if result.startswith("Success"):
@@ -531,8 +550,15 @@ if __name__ == "__main__":
 
     try:
         eel.start('main.html', size=(1200, 800))
-    except (SystemExit, MemoryError, KeyboardInterrupt):
+    except (SystemExit, MemoryError):
         pass
+    except KeyboardInterrupt:
+        print("\n🛑 Interrupted by user")
+        try:
+            eel.close_app()
+            time.sleep(1.5)  # Give time for the message to send
+        except:
+            pass
     finally:
         watcher.stop()
         cam_mgr.close()

@@ -7,10 +7,49 @@ from mutagen.id3 import ID3, APIC, TPE1, TALB, TIT2, TCON, TDRC, COMM
 class YouTubeMP3Downloader:
     """Modular YouTube MP3 Downloader using yt-dlp for everything."""
     
-    def __init__(self, output_dir="."):
+    def __init__(self, output_dir=".", progress_callback=None):
         self.output_dir = output_dir
+        self.progress_callback = progress_callback
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
+
+    def _progress_hook(self, d):
+        if self.progress_callback:
+            if d['status'] == 'downloading':
+                try:
+                    # Calculate percent
+                    total = d.get('total_bytes') or d.get('total_bytes_estimate')
+                    downloaded = d.get('downloaded_bytes', 0)
+                    if total:
+                        p = (downloaded / total) * 100
+                    else:
+                        p = 0
+
+                    # Speed
+                    s = d.get('speed') # float bytes/sec
+                    if s:
+                        speed_mb = s / 1024 / 1024
+                        speed_str = f"{speed_mb:.1f} MB/s"
+                    else:
+                        speed_str = "-- MB/s"
+
+                    # ETA
+                    eta = d.get('eta')
+                    if eta:
+                        eta_str = f"{int(eta)//60}:{int(eta)%60:02d}"
+                    else:
+                        eta_str = "--:--"
+
+                    self.progress_callback({
+                        'percent': p,
+                        'speed': speed_str,
+                        'eta': eta_str,
+                        'status': 'downloading'
+                    })
+                except Exception as e:
+                    print(f"Hook Error: {e}")
+            elif d['status'] == 'finished':
+                self.progress_callback({'percent': 100, 'speed': 'Done', 'eta': '00:00', 'status': 'finished'})
 
     def get_video_info(self, url):
         """Fetch video metadata using yt-dlp (no download)."""
@@ -66,6 +105,7 @@ class YouTubeMP3Downloader:
                 'quiet': True,
                 'no_warnings': True,
                 'noplaylist': True,
+                'progress_hooks': [self._progress_hook] if self.progress_callback else [],
             }
             
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
