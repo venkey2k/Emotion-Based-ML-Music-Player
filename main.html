@@ -1,24 +1,26 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#ffffff" id="metaThemeColor">
     <title>🎵 Moodify — Emotion Music Player</title>
     <script type="text/javascript" src="/eel.js"></script>
 
-    <!-- Moodify Favicon -->
-    <link rel="icon" type="image/svg+xml"
+    <link rel="icon" type="image/svg+xml" id="dynamicFavicon"
         href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='64' y2='64' gradientUnits='userSpaceOnUse'%3E%3Cstop offset='0%25' stop-color='%231DB954'/%3E%3Cstop offset='50%25' stop-color='%23667eea'/%3E%3Cstop offset='100%25' stop-color='%23f093fb'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='32' cy='32' r='30' fill='url(%23g)'/%3E%3Cpath d='M18 42c8-5 18-5 28 0' stroke='white' stroke-width='3.5' stroke-linecap='round' fill='none'/%3E%3Cpath d='M21 36c6-4 14-4 22 0' stroke='white' stroke-width='3' stroke-linecap='round' fill='none'/%3E%3Cpath d='M25 30c4-3 10-3 14 0' stroke='white' stroke-width='2.5' stroke-linecap='round' fill='none'/%3E%3C/svg%3E">
 
-    <link
-        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
+
+    <!-- Ambient Particle Canvas -->
+    <canvas id="particleCanvas" class="particle-canvas"></canvas>
 
     <!-- Animated Color Blobs Background -->
     <div class="color-blobs">
@@ -27,6 +29,7 @@
         <div class="blob b3"></div>
         <div class="blob b4"></div>
         <div class="blob b5"></div>
+        <div class="blob b6"></div>
     </div>
 
     <!-- ===== SIDEBAR ===== -->
@@ -75,6 +78,7 @@
                 <a class="nav-link" onclick="filterByMood('favorites')" data-color="pink">
                     <div class="nav-icon-wrap pink"><i class="fas fa-heart"></i></div>
                     <span>Favorites</span>
+                    <div class="nav-counter fav-counter" id="favCounter">0</div>
                 </a>
                 <a class="nav-link" onclick="loadSongs()" data-color="cyan">
                     <div class="nav-icon-wrap cyan"><i class="fas fa-sync-alt"></i></div>
@@ -131,6 +135,26 @@
                     <span>Shuffle</span>
                 </a>
             </div>
+
+            <div class="nav-sep"></div>
+
+            <!-- NEW: Stats in sidebar -->
+            <div class="sidebar-stats">
+                <div class="sidebar-stat">
+                    <div class="sidebar-stat-icon">🎵</div>
+                    <div class="sidebar-stat-info">
+                        <div class="sidebar-stat-num" id="sidebarSongCount">0</div>
+                        <div class="sidebar-stat-label">Total Songs</div>
+                    </div>
+                </div>
+                <div class="sidebar-stat">
+                    <div class="sidebar-stat-icon">🕐</div>
+                    <div class="sidebar-stat-info">
+                        <div class="sidebar-stat-num" id="sidebarPlayCount">0</div>
+                        <div class="sidebar-stat-label">Played</div>
+                    </div>
+                </div>
+            </div>
         </nav>
 
         <div class="sidebar-footer">
@@ -145,21 +169,23 @@
     <main class="main-area" id="mainArea">
 
         <!-- Top Bar -->
-        <header class="topbar">
+        <header class="topbar" id="topbar">
             <div class="topbar-left">
-                <button class="tb-circle" onclick="document.getElementById('sidebar').classList.toggle('mobile-open')">
+                <button class="tb-circle" onclick="document.getElementById('sidebar').classList.toggle('mobile-open')" aria-label="Toggle Sidebar">
                     <i class="fas fa-bars"></i>
                 </button>
-                <button class="tb-circle" onclick="history.back()"><i class="fas fa-chevron-left"></i></button>
-                <button class="tb-circle" onclick="history.forward()"><i class="fas fa-chevron-right"></i></button>
+                <button class="tb-circle" onclick="history.back()" aria-label="Back"><i class="fas fa-chevron-left"></i></button>
+                <button class="tb-circle" onclick="history.forward()" aria-label="Forward"><i class="fas fa-chevron-right"></i></button>
             </div>
 
             <div class="topbar-center">
-                <div class="search-wrapper">
+                <div class="search-wrapper" id="searchWrapper">
                     <i class="fas fa-search search-icon"></i>
                     <input type="text" id="searchInput" placeholder="Search songs, artists, moods..."
-                        oninput="filterSongs(this.value)">
+                        oninput="debouncedSearch(this.value)" autocomplete="off">
                     <div class="search-shortcut">⌘K</div>
+                    <!-- Search results dropdown -->
+                    <div class="search-dropdown" id="searchDropdown"></div>
                 </div>
             </div>
 
@@ -168,19 +194,40 @@
                     <span class="mp-dot" id="moodDot"></span>
                     <span class="mp-label" id="lastMoodLabel">MOOD: --</span>
                 </div>
-                <button class="tb-action green-glow" onclick="getTime()" title="Detect Emotion">
-                    <i class="fas fa-face-smile-wink"></i>
+
+                <!-- NEW: Theme Toggle -->
+                <button class="tb-action theme-toggle" onclick="toggleTheme()" title="Toggle Theme" id="themeToggle" aria-label="Toggle dark mode">
+                    <i class="fas fa-moon" id="themeIcon"></i>
                 </button>
-                <button class="tb-action" onclick="openUploadModal()" title="Upload">
+
+                <button class="tb-action green-glow" onclick="getTime()" title="Detect Emotion" aria-label="Detect Emotion">
+                    <i class="fas fa-face-smile-wink"></i>
+                    <div class="pulse-ring"></div>
+                </button>
+                <button class="tb-action" onclick="openUploadModal()" title="Upload" aria-label="Upload Song">
                     <i class="fas fa-cloud-arrow-up"></i>
                 </button>
-                <button class="tb-action" onclick="toggleQueue()" title="Queue" id="queueToggle">
+                <button class="tb-action" onclick="toggleQueue()" title="Queue" id="queueToggle" aria-label="Toggle Queue">
                     <i class="fas fa-bars-staggered"></i>
                     <span class="tb-badge" id="topBadge">0</span>
                 </button>
-                <div class="user-pill">
+                <div class="user-pill" onclick="toggleSettingsMenu()">
                     <div class="user-avatar-ring">
                         <div class="user-avatar"><i class="fas fa-user"></i></div>
+                    </div>
+                    <!-- Mini settings dropdown -->
+                    <div class="settings-dropdown" id="settingsDropdown">
+                        <div class="sd-item" onclick="toggleTheme()">
+                            <i class="fas fa-palette"></i> Theme
+                            <span class="sd-value" id="sdThemeVal">Light</span>
+                        </div>
+                        <div class="sd-item" onclick="showKeyboardShortcuts()">
+                            <i class="fas fa-keyboard"></i> Shortcuts
+                        </div>
+                        <div class="sd-sep"></div>
+                        <div class="sd-item" onclick="resetPreferences()">
+                            <i class="fas fa-rotate-left"></i> Reset Prefs
+                        </div>
                     </div>
                 </div>
             </div>
@@ -188,6 +235,9 @@
 
         <!-- ===== HERO ===== -->
         <section class="hero" id="heroSection">
+            <!-- Hero Particle Canvas -->
+            <canvas id="heroParticles" class="hero-particle-canvas"></canvas>
+
             <div class="hero-inner">
                 <div class="hero-left">
                     <div class="hero-pill">
@@ -214,18 +264,18 @@
                         </button>
                     </div>
                     <div class="hero-stats">
-                        <div class="stat">
-                            <div class="stat-num" id="statSongs">0</div>
+                        <div class="stat" data-animate-counter>
+                            <div class="stat-num" id="statSongs" data-target="0">0</div>
                             <div class="stat-label">Songs</div>
                         </div>
                         <div class="stat-divider"></div>
-                        <div class="stat">
-                            <div class="stat-num">5</div>
+                        <div class="stat" data-animate-counter>
+                            <div class="stat-num" data-target="5">5</div>
                             <div class="stat-label">Moods</div>
                         </div>
                         <div class="stat-divider"></div>
                         <div class="stat">
-                            <div class="stat-num">AI</div>
+                            <div class="stat-num ai-glow">AI</div>
                             <div class="stat-label">Powered</div>
                         </div>
                     </div>
@@ -233,26 +283,11 @@
                 <div class="hero-right">
                     <div class="hero-visual">
                         <div class="floating-cards">
-                            <div class="float-card fc1">
-                                <span>😊</span>
-                                <div class="fc-label">Happy</div>
-                            </div>
-                            <div class="float-card fc2">
-                                <span>😢</span>
-                                <div class="fc-label">Sad</div>
-                            </div>
-                            <div class="float-card fc3">
-                                <span>🔥</span>
-                                <div class="fc-label">Angry</div>
-                            </div>
-                            <div class="float-card fc4">
-                                <span>😌</span>
-                                <div class="fc-label">Chill</div>
-                            </div>
-                            <div class="float-card fc5">
-                                <span>⚡</span>
-                                <div class="fc-label">Energy</div>
-                            </div>
+                            <div class="float-card fc1"><span>😊</span><div class="fc-label">Happy</div></div>
+                            <div class="float-card fc2"><span>😢</span><div class="fc-label">Sad</div></div>
+                            <div class="float-card fc3"><span>🔥</span><div class="fc-label">Angry</div></div>
+                            <div class="float-card fc4"><span>😌</span><div class="fc-label">Chill</div></div>
+                            <div class="float-card fc5"><span>⚡</span><div class="fc-label">Energy</div></div>
                         </div>
                         <div class="hero-rings">
                             <div class="ring r1"></div>
@@ -269,11 +304,9 @@
                                     </linearGradient>
                                 </defs>
                                 <circle cx="40" cy="40" r="38" fill="url(#hg)" />
-                                <path d="M22 52c10-6 24-6 36 0" stroke="#fff" stroke-width="3.5"
-                                    stroke-linecap="round" />
+                                <path d="M22 52c10-6 24-6 36 0" stroke="#fff" stroke-width="3.5" stroke-linecap="round" />
                                 <path d="M26 44c8-5 18-5 28 0" stroke="#fff" stroke-width="3" stroke-linecap="round" />
-                                <path d="M30 36c5-3 12-3 20 0" stroke="#fff" stroke-width="2.5"
-                                    stroke-linecap="round" />
+                                <path d="M30 36c5-3 12-3 20 0" stroke="#fff" stroke-width="2.5" stroke-linecap="round" />
                             </svg>
                         </div>
                     </div>
@@ -281,27 +314,29 @@
             </div>
         </section>
 
+        <!-- ===== RECENTLY PLAYED (NEW) ===== -->
+        <section class="recent-section" id="recentSection" style="display:none;">
+            <div class="section-head">
+                <div>
+                    <h2 class="section-title">🕐 Recently Played</h2>
+                    <p class="section-sub">Pick up where you left off</p>
+                </div>
+                <button class="clear-recent-btn" onclick="clearRecentlyPlayed()" title="Clear history">
+                    <i class="fas fa-trash-can"></i> Clear
+                </button>
+            </div>
+            <div class="recent-scroll" id="recentScroll"></div>
+        </section>
+
         <!-- Mood Chips -->
         <section class="chips-bar" id="chipsBar">
             <div class="chips-scroll">
-                <button class="chip active" onclick="chipFilter(this,'all')">
-                    <span>🎵</span> All Songs
-                </button>
-                <button class="chip happy" onclick="chipFilter(this,'happy')">
-                    <span>😊</span> Happy
-                </button>
-                <button class="chip sad" onclick="chipFilter(this,'sad')">
-                    <span>😢</span> Sad
-                </button>
-                <button class="chip angry" onclick="chipFilter(this,'angry')">
-                    <span>🔥</span> Angry
-                </button>
-                <button class="chip chill" onclick="chipFilter(this,'neutral')">
-                    <span>🍃</span> Chill
-                </button>
-                <button class="chip energy" onclick="chipFilter(this,'surprise')">
-                    <span>⚡</span> Energetic
-                </button>
+                <button class="chip active" onclick="chipFilter(this,'all')"><span>🎵</span> All Songs</button>
+                <button class="chip happy" onclick="chipFilter(this,'happy')"><span>😊</span> Happy</button>
+                <button class="chip sad" onclick="chipFilter(this,'sad')"><span>😢</span> Sad</button>
+                <button class="chip angry" onclick="chipFilter(this,'angry')"><span>🔥</span> Angry</button>
+                <button class="chip chill" onclick="chipFilter(this,'neutral')"><span>🍃</span> Chill</button>
+                <button class="chip energy" onclick="chipFilter(this,'surprise')"><span>⚡</span> Energetic</button>
             </div>
         </section>
 
@@ -312,18 +347,54 @@
                     <h2 class="section-title">Your Library</h2>
                     <p class="section-sub" id="songCount">Loading songs...</p>
                 </div>
-                <div class="view-toggles">
-                    <button class="vt active" onclick="setView('grid', this)" title="Grid View"><i
-                            class="fas fa-th-large"></i></button>
-                    <button class="vt" onclick="setView('list',this)" title="List"><i class="fas fa-list"></i></button>
+                <div class="section-head-right">
+                    <!-- Sort dropdown -->
+                    <div class="sort-dropdown-wrap">
+                        <button class="sort-btn" onclick="toggleSortMenu()" title="Sort">
+                            <i class="fas fa-arrow-down-wide-short"></i>
+                            <span id="sortLabel">Default</span>
+                        </button>
+                        <div class="sort-menu" id="sortMenu">
+                            <div class="sort-opt active" onclick="sortSongs('default')">Default</div>
+                            <div class="sort-opt" onclick="sortSongs('title')">Title A-Z</div>
+                            <div class="sort-opt" onclick="sortSongs('title-desc')">Title Z-A</div>
+                            <div class="sort-opt" onclick="sortSongs('mood')">By Mood</div>
+                        </div>
+                    </div>
+                    <div class="view-toggles">
+                        <button class="vt active" onclick="setView('grid', this)" title="Grid View"><i class="fas fa-th-large"></i></button>
+                        <button class="vt" onclick="setView('list',this)" title="List"><i class="fas fa-list"></i></button>
+                    </div>
                 </div>
             </div>
+
+            <!-- Skeleton Loading -->
+            <div class="skeleton-grid" id="skeletonGrid">
+                <div class="skeleton-card"><div class="sk-cover"></div><div class="sk-title"></div><div class="sk-desc"></div></div>
+                <div class="skeleton-card"><div class="sk-cover"></div><div class="sk-title"></div><div class="sk-desc"></div></div>
+                <div class="skeleton-card"><div class="sk-cover"></div><div class="sk-title"></div><div class="sk-desc"></div></div>
+                <div class="skeleton-card"><div class="sk-cover"></div><div class="sk-title"></div><div class="sk-desc"></div></div>
+                <div class="skeleton-card"><div class="sk-cover"></div><div class="sk-title"></div><div class="sk-desc"></div></div>
+                <div class="skeleton-card"><div class="sk-cover"></div><div class="sk-title"></div><div class="sk-desc"></div></div>
+                <div class="skeleton-card"><div class="sk-cover"></div><div class="sk-title"></div><div class="sk-desc"></div></div>
+                <div class="skeleton-card"><div class="sk-cover"></div><div class="sk-title"></div><div class="sk-desc"></div></div>
+            </div>
+
             <div class="songs-grid" id="songsGrid"></div>
             <div class="songs-list" id="songsList" style="display:none;"></div>
             <div class="empty-box" id="emptyBox" style="display:none;">
-                <div class="empty-emoji">🎵</div>
+                <div class="empty-visual">
+                    <div class="empty-emoji">🎵</div>
+                    <div class="empty-rings">
+                        <div class="empty-ring er1"></div>
+                        <div class="empty-ring er2"></div>
+                    </div>
+                </div>
                 <h3>No songs found</h3>
                 <p>Try a different search or mood filter</p>
+                <button class="hero-btn outline-btn" onclick="chipFilter(document.querySelector('.chip'),'all')" style="margin-top:16px;font-size:13px;padding:10px 20px;">
+                    <i class="fas fa-rotate-left"></i> Show All Songs
+                </button>
             </div>
         </section>
     </main>
@@ -332,10 +403,11 @@
     <div class="queue-dim" id="queueDim" onclick="toggleQueue()"></div>
     <aside class="queue-drawer" id="queueDrawer">
         <div class="qd-head">
-            <div class="qd-title">
-                <i class="fas fa-layer-group"></i> Queue
+            <div class="qd-title"><i class="fas fa-layer-group"></i> Queue</div>
+            <div class="qd-head-actions">
+                <button class="qd-clear" onclick="clearQueue()" title="Clear Queue"><i class="fas fa-trash-can"></i></button>
+                <button class="qd-close" onclick="toggleQueue()"><i class="fas fa-xmark"></i></button>
             </div>
-            <button class="qd-close" onclick="toggleQueue()"><i class="fas fa-xmark"></i></button>
         </div>
 
         <div class="qd-now" id="qdNow" style="display:none;">
@@ -343,7 +415,7 @@
             <div class="qd-now-card" id="qdNowCard"></div>
         </div>
 
-        <div class="qd-section-title" id="qdNextTitle" style="display:none;">⏭️ Next Up</div>
+        <div class="qd-section-title" id="qdNextTitle" style="display:none;">⏭️ Next Up <span class="qd-count" id="qdCount">0</span></div>
         <div class="qd-list" id="qdList">
             <div class="qd-empty" id="qdEmpty">
                 <div class="qd-empty-emoji">📭</div>
@@ -359,8 +431,62 @@
         </div>
     </aside>
 
+    <!-- ===== FULL SCREEN NOW PLAYING (NEW) ===== -->
+    <div class="fs-player" id="fsPlayer">
+        <button class="fs-close" onclick="closeFullscreen()"><i class="fas fa-chevron-down"></i></button>
+
+        <div class="fs-background" id="fsBg"></div>
+
+        <div class="fs-content">
+            <div class="fs-cover-wrap">
+                <div class="fs-cover" id="fsCover">
+                    <img id="fsCoverImg" src="" alt="">
+                    <div class="fs-vinyl-ring"></div>
+                </div>
+                <!-- Visualizer Canvas -->
+                <canvas id="fsVisualizer" class="fs-visualizer-canvas"></canvas>
+            </div>
+
+            <div class="fs-info">
+                <div class="fs-mood-tag" id="fsMoodTag"></div>
+                <h2 class="fs-title" id="fsTitle">No song selected</h2>
+                <p class="fs-artist" id="fsArtist">Pick a track to start</p>
+            </div>
+
+            <div class="fs-progress">
+                <div class="fs-time-bar" onclick="seek(event)">
+                    <div class="fs-time-fill" id="fsTimeFill"></div>
+                </div>
+                <div class="fs-times">
+                    <span id="fsCurTime">0:00</span>
+                    <span id="fsTotTime">0:00</span>
+                </div>
+            </div>
+
+            <div class="fs-controls">
+                <button class="fsc" onclick="rand_play()"><i class="fas fa-shuffle"></i></button>
+                <button class="fsc" onclick="prevSong()"><i class="fas fa-backward-step"></i></button>
+                <button class="fsc main" id="fsPlayBtn" onclick="togglePlay()">
+                    <i class="fas fa-play" id="fsPlayIcon"></i>
+                </button>
+                <button class="fsc" onclick="nextsong()"><i class="fas fa-forward-step"></i></button>
+                <button class="fsc" onclick="toggleLike()"><i class="far fa-heart" id="fsLikeIcon"></i></button>
+            </div>
+
+            <div class="fs-extra">
+                <div class="fs-vol">
+                    <i class="fas fa-volume-high"></i>
+                    <input type="range" class="fs-vol-range" min="0" max="100" value="80" oninput="setVolume(this.value)">
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ===== BOTTOM PLAYER ===== -->
     <footer class="player-bar" id="playerBar">
+        <!-- Visualizer Canvas (behind player) -->
+        <canvas id="playerVisualizer" class="player-visualizer-canvas"></canvas>
+
         <!-- Top Progress -->
         <div class="pb-progress" id="pbProgress" onclick="seek(event)">
             <div class="pb-progress-fill" id="pbFill">
@@ -372,19 +498,20 @@
         <div class="pb-inner">
             <!-- Left: Song info -->
             <div class="pb-left">
-                <div class="pb-cover" id="pbCover">
+                <div class="pb-cover" id="pbCover" onclick="openFullscreen()">
                     <img id="pbCoverImg"
                         src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Crect fill='%23f0f0f0' width='80' height='80' rx='8'/%3E%3Ctext fill='%23ccc' x='50%25' y='50%25' text-anchor='middle' dy='.35em' font-size='28'%3E♪%3C/text%3E%3C/svg%3E"
                         alt="">
                     <div class="pb-playing-indicator" id="pbPlayingInd">
                         <span></span><span></span><span></span>
                     </div>
+                    <div class="pb-expand-hint"><i class="fas fa-expand"></i></div>
                 </div>
                 <div class="pb-meta">
                     <div class="pb-title" id="pbTitle">No song selected</div>
                     <div class="pb-artist" id="pbArtist">Pick a track to start</div>
                 </div>
-                <button class="pb-like" id="pbLike" onclick="toggleLike()">
+                <button class="pb-like" id="pbLike" onclick="toggleLike()" aria-label="Toggle favorite">
                     <i class="far fa-heart"></i>
                 </button>
             </div>
@@ -393,13 +520,12 @@
             <div class="pb-center">
                 <div class="pb-controls">
                     <button class="pc" onclick="rand_play()" title="Shuffle"><i class="fas fa-shuffle"></i></button>
-                    <button class="pc" onclick="prevSong()" title="Previous"><i
-                            class="fas fa-backward-step"></i></button>
+                    <button class="pc" onclick="prevSong()" title="Previous"><i class="fas fa-backward-step"></i></button>
                     <button class="pc main-play" id="mainPlayBtn" onclick="togglePlay()" title="Play">
                         <i class="fas fa-play" id="mainPlayIcon"></i>
                     </button>
                     <button class="pc" onclick="nextsong()" title="Next"><i class="fas fa-forward-step"></i></button>
-                    <button class="pc" title="Repeat"><i class="fas fa-repeat"></i></button>
+                    <button class="pc" id="repeatBtn" onclick="toggleRepeat()" title="Repeat"><i class="fas fa-repeat"></i></button>
                 </div>
                 <div class="pb-time">
                     <span id="curTime">0:00</span>
@@ -414,6 +540,9 @@
             <div class="pb-right">
                 <button class="pe" onclick="getTime()" title="Detect Emotion">
                     <i class="fas fa-face-smile-beam"></i>
+                </button>
+                <button class="pe" onclick="openFullscreen()" title="Fullscreen Player">
+                    <i class="fas fa-up-right-and-down-left-from-center"></i>
                 </button>
                 <button class="pe" onclick="toggleQueue()" title="Queue">
                     <i class="fas fa-bars-staggered"></i>
@@ -452,19 +581,15 @@
                     <div class="dz-filename" id="dzFilename"></div>
                 </div>
 
-                <div style="text-align:center; margin: 10px 0; position:relative;">
-                    <span
-                        style="background:var(--bg-2); padding:0 8px; color:var(--text-3); font-size:11px; font-weight:700;">OR</span>
-                    <div
-                        style="position:absolute; top:50%; left:0; right:0; height:1px; background:var(--border); z-index:-1;">
-                    </div>
+                <div class="modal-or">
+                    <span>OR</span>
                 </div>
 
-                <button class="upload-trigger" onclick="switchToYouTube()"
-                    style="justify-content:center; margin-bottom:16px;">
+                <button class="upload-trigger yt-switch" onclick="switchToYouTube()">
                     <i class="fab fa-youtube" style="color:#ef4444; font-size:16px;"></i>
                     <span>Download from YouTube</span>
                 </button>
+
                 <div class="mf">
                     <label>🎵 Song Title</label>
                     <input type="text" id="uploadTitle" placeholder="What's it called?">
@@ -497,9 +622,6 @@
         </div>
     </div>
 
-    <!-- Toasts -->
-    <div class="toast-stack" id="toastStack"></div>
-
     <!-- ===== YOUTUBE MODAL ===== -->
     <div class="modal-dim" id="ytModal">
         <div class="modal-box">
@@ -511,7 +633,6 @@
                 <button class="modal-close" onclick="closeYouTubeModal()"><i class="fas fa-xmark"></i></button>
             </div>
             <div class="modal-body">
-                <!-- Step 1: Input -->
                 <div class="yt-step" id="ytStep1">
                     <div class="mf">
                         <label>🔗 YouTube Link</label>
@@ -522,7 +643,6 @@
                     </div>
                 </div>
 
-                <!-- Step 2: Preview -->
                 <div class="yt-preview" id="ytPreview" style="display:none;">
                     <img id="ytThumb" src="" alt="Thumbnail">
                     <div class="yt-info">
@@ -531,7 +651,6 @@
                     </div>
                 </div>
 
-                <!-- Mood Selection -->
                 <div class="mf" id="ytMoodSection" style="display:none;">
                     <label>🎨 Mood</label>
                     <select id="ytMood">
@@ -543,18 +662,14 @@
                     </select>
                 </div>
 
-                <!-- Actions -->
                 <button class="modal-submit red" id="ytDownloadBtn" onclick="submitYouTube()" style="display:none;">
-                    Download & Convert
+                    <i class="fas fa-download"></i> Download & Convert
                 </button>
             </div>
 
-            <!-- Loading State -->
             <div class="modal-loading" id="ytLoading" style="display:none;">
                 <div class="spinner"></div>
                 <div class="loading-text" id="ytLoadingText">Processing...</div>
-
-                <!-- Progress Bar -->
                 <div class="progress-wrapper">
                     <div class="progress-info">
                         <span id="ytProgressText">0%</span>
@@ -570,33 +685,86 @@
 
     <!-- ===== EMOTION DETECTION MODAL ===== -->
     <div class="modal-dim" id="emotionModal">
-        <div class="modal-box" style="max-width: 500px;">
-            <div class="modal-header">
+        <div class="modal-box emotion-modal">
+            <div class="modal-head">
                 <div class="modal-title">
                     <div class="modal-title-icon gradient"><i class="fas fa-brain"></i></div>
-                    <h3>Mood Detection</h3>
+                    Mood Detection
                 </div>
-                <button class="modal-close" onclick="closeEmotionModal()"><i class="fas fa-times"></i></button>
+                <button class="modal-close" onclick="closeEmotionModal()"><i class="fas fa-xmark"></i></button>
             </div>
             <div class="modal-body">
-                <div class="cam-container"
-                    style="position: relative; border-radius: 12px; overflow: hidden; background: transparent; aspect-ratio: 4/3; margin-bottom: 20px;">
-                    <img id="camFrame" src="" style="width:100%; height:100%; object-fit: contain;">
-                    <div class="cam-scan"
-                        style="position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: var(--grad-main); box-shadow: 0 0 15px var(--green); animation: scanLoop 3s linear infinite;">
+                <div class="cam-container">
+                    <img id="camFrame" src="" alt="Camera Feed">
+                    <div class="cam-scan"></div>
+                    <div class="cam-corners">
+                        <div class="cam-corner tl"></div>
+                        <div class="cam-corner tr"></div>
+                        <div class="cam-corner bl"></div>
+                        <div class="cam-corner br"></div>
                     </div>
                 </div>
-                <div class="emotion-status"
-                    style="text-align: center; padding: 15px; background: var(--bg-3); border-radius: 12px;">
-                    <div style="font-size: 14px; color: var(--text-dim); margin-bottom: 5px;">CURRENT MOOD</div>
-                    <div id="detectedMood" style="font-size: 24px; font-weight: 800; color: var(--green);">Analyzing...
+
+                <div class="emotion-result">
+                    <div class="emotion-ring-wrap">
+                        <svg class="emotion-ring-svg" viewBox="0 0 120 120">
+                            <circle cx="60" cy="60" r="54" fill="none" stroke="var(--bg-4)" stroke-width="6"/>
+                            <circle cx="60" cy="60" r="54" fill="none" stroke="url(#emotionGrad)" stroke-width="6"
+                                stroke-dasharray="339.29" stroke-dashoffset="339.29" stroke-linecap="round"
+                                id="emotionRingCircle" transform="rotate(-90 60 60)"/>
+                            <defs>
+                                <linearGradient id="emotionGrad" x1="0" y1="0" x2="120" y2="120">
+                                    <stop offset="0%" stop-color="#1DB954"/>
+                                    <stop offset="100%" stop-color="#667eea"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                        <div class="emotion-ring-center" id="emotionEmoji">🎭</div>
+                    </div>
+                    <div class="emotion-info">
+                        <div class="emotion-label">CURRENT MOOD</div>
+                        <div class="emotion-value" id="detectedMood">Analyzing...</div>
+                        <div class="emotion-confidence" id="emotionConfidence">--</div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="toastStack"></div>
+    <!-- ===== KEYBOARD SHORTCUTS MODAL (NEW) ===== -->
+    <div class="modal-dim" id="shortcutsModal">
+        <div class="modal-box shortcuts-modal">
+            <div class="modal-head">
+                <div class="modal-title">
+                    <div class="modal-title-icon"><i class="fas fa-keyboard"></i></div>
+                    Keyboard Shortcuts
+                </div>
+                <button class="modal-close" onclick="document.getElementById('shortcutsModal').classList.remove('open')">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="shortcut-grid">
+                    <div class="shortcut-item"><kbd>Space</kbd><span>Play / Pause</span></div>
+                    <div class="shortcut-item"><kbd>→</kbd><span>Next Song</span></div>
+                    <div class="shortcut-item"><kbd>←</kbd><span>Previous Song</span></div>
+                    <div class="shortcut-item"><kbd>Q</kbd><span>Toggle Queue</span></div>
+                    <div class="shortcut-item"><kbd>F</kbd><span>Fullscreen Player</span></div>
+                    <div class="shortcut-item"><kbd>M</kbd><span>Mute / Unmute</span></div>
+                    <div class="shortcut-item"><kbd>D</kbd><span>Toggle Dark Mode</span></div>
+                    <div class="shortcut-item"><kbd>S</kbd><span>Shuffle Play</span></div>
+                    <div class="shortcut-item"><kbd>⌘K</kbd><span>Search</span></div>
+                    <div class="shortcut-item"><kbd>Esc</kbd><span>Close Modal</span></div>
+                    <div class="shortcut-item"><kbd>↑</kbd><span>Volume Up</span></div>
+                    <div class="shortcut-item"><kbd>↓</kbd><span>Volume Down</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toasts -->
+    <div class="toast-stack" id="toastStack"></div>
+
     <script src="app.js"></script>
 </body>
 
