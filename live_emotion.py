@@ -107,8 +107,8 @@ class Config:
     mirror:         bool  = True
 
     # Paths
-    model_path:     str   = '../keras/Emotion_Detection.h5'
-    cascade_path:   str   = '../keras/haarcascade_frontalface_default.xml'
+    model_path:     str   = 'keras/Emotion_Detection.h5'
+    cascade_path:   str   = 'keras/haarcascade_frontalface_default.xml'
 
     # ══════════════════════════════════════════════════
     # FIX 1: Test-Time Augmentation (TTA)
