@@ -2,6 +2,10 @@
 
 Moodify is a modern music player that uses machine learning to detect your current emotion via webcam and plays music that matches your mood.
 
+## Screenshot
+
+![Moodify App Screenshot](screenshots/image.png)
+
 ## Features
 
 - **Real-time Emotion Detection**: Uses a CNN model with v7 accuracy fixes including TTA, CLAHE, and Geometric boosting.
