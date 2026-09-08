@@ -452,11 +452,19 @@ class EmotionDetector:
 
         self._face_mesh = None
         if MEDIAPIPE_OK and self.cfg.geo_boost_enabled:
-            self._face_mesh = mp_lib.solutions.face_mesh.FaceMesh(
-                static_image_mode=False, max_num_faces=1,
-                refine_landmarks=True,
-                min_detection_confidence=0.5,
-                min_tracking_confidence=0.5)
+            try:
+                self._face_mesh = mp_lib.solutions.face_mesh.FaceMesh(
+                    static_image_mode=False, max_num_faces=1,
+                    refine_landmarks=True,
+                    min_detection_confidence=0.5,
+                    min_tracking_confidence=0.5)
+            except AttributeError:
+                log.warning(
+                    "MediaPipe %s has no 'solutions' API "
+                    "(legacy FaceMesh removed) — geometric boosting disabled",
+                    getattr(mp_lib, "__version__", "unknown"),
+                )
+                self._face_mesh = None
 
         self._smoother = _Smoother(self.cfg)
         self._geo = _GeoAnalyzer(self.cfg) if MEDIAPIPE_OK else None
@@ -542,12 +550,16 @@ class EmotionDetector:
                         self._face_mesh.close()
                     except:
                         pass
-                    self._face_mesh = mp_lib.solutions.face_mesh.FaceMesh(
-                        static_image_mode=False, max_num_faces=1,
-                        refine_landmarks=True,
-                        min_detection_confidence=0.5,
-                        min_tracking_confidence=0.5)
-                    log.info("MediaPipe FaceMesh re-initialized after crash")
+                    try:
+                        self._face_mesh = mp_lib.solutions.face_mesh.FaceMesh(
+                            static_image_mode=False, max_num_faces=1,
+                            refine_landmarks=True,
+                            min_detection_confidence=0.5,
+                            min_tracking_confidence=0.5)
+                        log.info("MediaPipe FaceMesh re-initialized after crash")
+                    except AttributeError:
+                        log.warning("MediaPipe solutions API missing — disabling FaceMesh")
+                        self._face_mesh = None
 
         # Apply fixes
         calibrated = self._apply_class_boost(ensemble)
